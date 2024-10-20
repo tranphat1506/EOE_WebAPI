@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using EOE_WebAPI.Models.ResponsePayload;
 
 namespace EOE_WebAPI.Controllers
 {
@@ -26,13 +27,14 @@ namespace EOE_WebAPI.Controllers
         }
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+        [ProducesResponseType(200)]
+        public ActionResult<ApiResponse<LoginResponse>> Login([FromBody] LoginRequest request)
         {
             try
             {
                 // Tìm tài khoản trong cơ sở dữ liệu
-                var account = _db.Account.Include(a => a.User)
-                    .FirstOrDefault(u => u.Email == request.Email);
+                var account = _db.Account.Include(a => a.User).ThenInclude(u => u.ProfileImage)
+                    .FirstOrDefault(a => a.Email == request.Email);
                 if (account == null || account.User == null || !BCrypt.Net.BCrypt.Verify(request.Password, account.Password))
                 {
                     return Unauthorized(); // Trả về 401 nếu thông tin đăng nhập không hợp lệ
@@ -41,22 +43,32 @@ namespace EOE_WebAPI.Controllers
                 // Tạo access token
                 var token = JWTUtils.GenerateToken(user.UserId.ToString());
                 var refreshToken = JWTUtils.GenerateRefreshToken(user.UserId.ToString()); // Giả sử bạn có hàm này
-
+                ApiResponse<LoginResponse> resPayload = new(
+                    200,
+                    "Login success",
+                    new() {
+                        AccountId = account.AccountId,
+                        UserId = user.UserId,
+                        Email = account.Email,
+                        CreatedAt = account.CreatedAt,
+                        DisplayName = user.DisplayName,
+                        Birth = user.Birth,
+                        Sex = user.Sex,
+                        ProfileImage = user.ProfileImage == null ? null : new ImageResponse() {
+                            MediaId = user.ProfileImage.MediaId,
+                            MediaName = user.ProfileImage.MediaName,
+                            MediaType = user.ProfileImage.MediaType,
+                            MediaUrl = user.ProfileImage.MediaUrl,
+                            Tags = user.ProfileImage.Tags,
+                        }
+                    }
+                );
                 // Trả về thông tin người dùng, access token và refresh token
-                return Ok(new
-                {
-                    user.UserId,
-                    account.Email,
-                    user.DisplayName,
-                    user.Sex,
-                    Birth = user.Birth.ToString(),
-                    AccessToken = token,
-                    RefreshToken = refreshToken
-                });
+                return Ok(resPayload);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi đăng nhập.");
+                _logger.LogError(ex, "Error while logging");
                 return StatusCode(500, "Đã xảy ra lỗi trong quá trình đăng nhập.");
             }
         }
@@ -193,7 +205,7 @@ namespace EOE_WebAPI.Controllers
         public DateTime? Birth { get; set; }
 
         [Required(ErrorMessage = "Giới tính là bắt buộc.")]
-        public bool? Sex { get; set; }
+        public bool Sex { get; set; }
     }
 
     // Model cho yêu cầu quên mật khẩu

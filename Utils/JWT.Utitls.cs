@@ -54,7 +54,7 @@ namespace EOE_WebAPI.Utils
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(_configuration["Jwt:AccessTokenDurationInDays"] ?? "1")), // Thời gian hết hạn, mặc định 15 phút
+                expires: DateTime.Now.AddDays(double.Parse(_configuration["Jwt:AccessTokenDurationInDays"] ?? "1")),
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token); // Trả về token dưới dạng chuỗi
@@ -87,7 +87,7 @@ namespace EOE_WebAPI.Utils
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(_configuration["Jwt:RefreshTokenDurationInDays"] ?? "7")), // Thời gian hết hạn, mặc định 15 phút
+                expires: DateTime.Now.AddDays(double.Parse(_configuration["Jwt:RefreshTokenDurationInDays"] ?? "7")),
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token); // Trả về token dưới dạng chuỗi
